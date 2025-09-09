@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Booking UX/UI Canvas</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+            background: linear-gradient(180deg, #EFF6FF 0%, #FFFFFF 50%);
+        }
+        .hidden {
+            display: none;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+        .animated-item {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+        .animated-item.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .progress-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            flex-grow: 1;
+        }
+        .progress-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            height: 2px;
+            width: 100%;
+            background-color: #e5e7eb; /* gray-200 */
+            z-index: -1;
+        }
+        .progress-step .step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 2px solid #e5e7eb; /* gray-200 */
+            background-color: white;
+        }
+        .progress-step.active .step-circle {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+            border-color: #3b82f6;
+        }
+        .progress-step.completed .step-circle {
+            background-color: #16a34a; /* green-600 */
+            color: white;
+            border-color: #16a34a;
+        }
+        .progress-step.completed:not(:last-child)::after {
+            background-color: #16a34a; /* green-600 */
+        }
+        .tab-button.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .date-item.active {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .addon-option.selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            box-shadow: 0 0 0 2px #3b82f6;
+        }
+        .seat {
+            width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+            border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;
+            background-color: #dbeafe; color: #1e40af; border: 1px solid #93c5fd;
+        }
+        .seat.occupied { background-color: #e5e7eb; color: #6b7280; cursor: not-allowed; border-color: #d1d5db; }
+        .seat.selected { background-color: #2563eb; color: white; border-color: #1d4ed8; }
+        .seat.premium { background-color: #fef9c3; color: #854d0e; border-color: #fde047; }
+        .seat.premium.selected { background-color: #ca8a04; color: white; border-color: #a16207; }
+        .slider-container { position: relative; height: 20px; margin-top: 1rem; }
+        .slider-track, .slider-progress { position: absolute; height: 4px; border-radius: 2px; left: 0; right: 0; top: 50%; transform: translateY(-50%); }
+        .slider-track { background-color: #e5e7eb; }
+        .slider-progress { background-color: #3b82f6; z-index: 1; }
+        .slider-container input[type=range] { position: absolute; width: 100%; -webkit-appearance: none; appearance: none; background: transparent; pointer-events: none; margin: 0; top: 50%; transform: translateY(-50%); }
+        .slider-container input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; height: 16px; width: 16px; background-color: #3b82f6; border-radius: 50%; cursor: pointer; pointer-events: auto; z-index: 2; }
+        .slider-container input[type=range]::-moz-range-thumb { height: 16px; width: 16px; background-color: #3b82f6; border-radius: 50%; cursor: pointer; border: none; }
+        .calendar-day:not(.disabled):hover { background-color: #eff6ff; }
+        .calendar-day.selected { background-color: #3b82f6; color: white; }
+        
+        .flight-option.selected {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <div class="container mx-auto p-4 max-w-5xl">
+        <!-- Header -->
+        <header id="main-header" class="mb-8 animated-item">
+             <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+                    <h1 class="text-2xl font-bold text-slate-900">SwiftWing</h1>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-medium text-slate-700 hidden sm:block">Hello, Alex</span>
+                    <img src="https://i.pravatar.cc/40?u=alex" alt="User avatar" class="w-10 h-10 rounded-full"/>
+                </div>
+            </div>
+        </header>
+
+        <!-- Progress Bar -->
+        <div id="progress-bar" class="mb-12 flex justify-between items-start">
+            <div id="step-search" class="progress-step active"><div class="step-circle">1</div><p class="text-xs sm:text-sm mt-2 text-center">Search</p></div>
+            <div id="step-select" class="progress-step"><div class="step-circle">2</div><p class="text-xs sm:text-sm mt-2 text-center">Select Flight</p></div>
+            <div id="step-passenger" class="progress-step"><div class="step-circle">3</div><p class="text-xs sm:text-sm mt-2 text-center">Passenger</p></div>
+            <div id="step-addons" class="progress-step"><div class="step-circle">4</div><p class="text-xs sm:text-sm mt-2 text-center">Add-ons</p></div>
+            <div id="step-review" class="progress-step"><div class="step-circle">5</div><p class="text-xs sm:text-sm mt-2 text-center">Review</p></div>
+            <div id="step-payment" class="progress-step"><div class="step-circle">6</div><p class="text-xs sm:text-sm mt-2 text-center">Payment</p></div>
+        </div>
+
+        <main>
+            <!-- Page 1: Search Page -->
+            <div id="search-page" class="page">
+                <div class="text-center mb-8 animated-item">
+                    <h2 class="text-3xl md:text-4xl font-bold text-slate-900">Book your flights</h2>
+                    <p class="text-slate-600 mt-2">Find the best deals for your next trip.</p>
+                </div>
+
+                <div class="bg-white p-6 md:p-8 rounded-3xl shadow-xl animated-item">
+                    <div class="bg-slate-100 p-1 rounded-full flex w-full max-w-sm mx-auto mb-6">
+                        <button id="round-trip-btn" class="tab-button active py-2.5 px-4 w-1/2 font-semibold text-slate-600 rounded-full transition-colors" onclick="selectTripType('round-trip')">Round Trip</button>
+                        <button id="one-way-btn" class="tab-button py-2.5 px-4 w-1/2 font-semibold text-slate-600 rounded-full transition-colors" onclick="selectTripType('one-way')">One Way</button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <!-- From/To Input -->
+                         <div class="md:col-span-2 relative">
+                            <div class="relative flex items-center w-full border border-slate-200 rounded-2xl bg-white shadow-sm">
+                                <i data-lucide="plane-takeoff" class="absolute left-4 w-5 h-5 text-slate-400 pointer-events-none"></i>
+                                <div class="flex-1 w-1/2 pl-12 p-4">
+                                     <label for="from" class="text-sm font-medium text-slate-500">From</label>
+                                     <input type="text" id="from" value="New York (JFK)" class="w-full text-lg font-semibold text-slate-900 bg-transparent border-0 p-0 focus:outline-none focus:ring-0">
+                                </div>
+                                <button onclick="swapLocations()" title="Swap locations" class="p-2 rounded-full hover:bg-slate-100 transition z-10 flex-shrink-0 mx-2"><i data-lucide="arrow-right-left" class="w-5 h-5 text-slate-600"></i></button>
+                                 <div class="flex-1 w-1/2 pr-12 p-4 text-right">
+                                    <label for="to" class="text-sm font-medium text-slate-500">To</label>
+                                    <input type="text" id="to" value="London (LHR)" class="w-full text-lg font-semibold text-slate-900 bg-transparent border-0 p-0 focus:outline-none focus:ring-0 text-right">
+                                 </div>
+                                <i data-lucide="plane-landing" class="absolute right-4 w-5 h-5 text-slate-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        <!-- Date Inputs -->
+                        <div class="p-4 border border-slate-200 rounded-2xl shadow-sm cursor-pointer" onclick="openCalendar(event, 'depart')">
+                            <label for="depart" class="text-sm font-medium text-slate-500">Depart</label>
+                            <input type="text" id="depart" readonly class="w-full text-lg font-semibold text-slate-900 bg-transparent border-0 p-0 focus:outline-none focus:ring-0 pointer-events-none" value="15 / 10 / 2025">
+                        </div>
+                        <div id="return-date-container" class="p-4 border border-slate-200 rounded-2xl shadow-sm cursor-pointer" onclick="openCalendar(event, 'return')">
+                            <label for="return" class="text-sm font-medium text-slate-500">Return</label>
+                            <input type="text" id="return" readonly class="w-full text-lg font-semibold text-slate-900 bg-transparent border-0 p-0 focus:outline-none focus:ring-0 pointer-events-none" value="22 / 10 / 2025">
+                        </div>
+
+                        <!-- Passengers Input -->
+                        <div class="md:col-span-2 p-4 border border-slate-200 rounded-2xl shadow-sm">
+                             <label for="passengers" class="text-sm font-medium text-slate-500">Passengers</label>
+                             <div class="flex items-center justify-between mt-1">
+                                <span id="passenger-count-display" class="text-lg font-semibold text-slate-900">1 Adult</span>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="updatePassengerCount(-1)" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 transition text-slate-700 font-bold text-xl">-</button>
+                                    <input type="number" id="passengers" value="1" min="1" class="hidden">
+                                    <button onclick="updatePassengerCount(1)" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 transition text-slate-700 font-bold text-xl">+</button>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8">
+                        <button onclick="searchFlights()" class="w-full bg-blue-600 text-white font-bold py-4 px-4 rounded-2xl hover:bg-blue-700 transition-transform transform hover:scale-105 flex items-center justify-center gap-2 text-lg shadow-lg shadow-blue-500/30">
+                            <i data-lucide="search"></i>Search Flights
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Popular Destinations -->
+                <div id="deals-section" class="mt-16 animated-item">
+                    <h3 class="text-2xl font-bold text-slate-900 text-center mb-6">Popular Destinations</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                        <div class="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300">
+                            <img src="https://images.unsplash.com/photo-1502602898657-3e91760c0341?q=80&w=2070&auto=format&fit=crop" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-110">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                            <div class="absolute bottom-0 left-0 p-4 text-white">
+                                <h4 class="font-bold text-lg">Paris</h4>
+                                <p class="text-sm">Flights from $599</p>
+                            </div>
+                        </div>
+                        <div class="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300">
+                            <img src="https://images.unsplash.com/photo-1542051841857-5f90071e7989?q=80&w=2070&auto=format&fit=crop" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-110">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                            <div class="absolute bottom-0 left-0 p-4 text-white">
+                                <h4 class="font-bold text-lg">Tokyo</h4>
+                                <p class="text-sm">Flights from $899</p>
+                            </div>
+                        </div>
+                        <div class="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300">
+                            <img src="https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1996&auto=format&fit=crop" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-110">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                            <div class="absolute bottom-0 left-0 p-4 text-white">
+                                <h4 class="font-bold text-lg">Rome</h4>
+                                <p class="text-sm">Flights from $649</p>
+                            </div>
+                        </div>
+                         <div class="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300">
+                            <img src="https://images.unsplash.com/photo-1573790387438-4da905039392?q=80&w=1925&auto=format&fit=crop" class="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-110">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                            <div class="absolute bottom-0 left-0 p-4 text-white">
+                                <h4 class="font-bold text-lg">Bali</h4>
+                                <p class="text-sm">Flights from $1199</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Page 2: Select Flight -->
+            <div id="select-page" class="page hidden">
+                 <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+                        <div><h2 class="text-2xl font-bold">Select your departure flight</h2><p id="flight-select-subtitle" class="text-slate-600">New York (JFK) to London (LHR) - 1 Passenger</p></div>
+                        <button onclick="navigateTo('search-page')" class="text-blue-600 hover:text-blue-800 font-semibold text-sm self-start sm:self-center">Change Search</button>
+                    </div>
+                    <div class="mb-6"><div class="flex items-center justify-between"><button id="prev-day" class="p-2 rounded-full hover:bg-slate-100 transition"><i data-lucide="chevron-left" class="w-5 h-5"></i></button><div id="date-strip" class="flex-grow overflow-hidden"><div id="date-items" class="flex justify-center items-center gap-2 transition-transform duration-300"></div></div><button id="next-day" class="p-2 rounded-full hover:bg-slate-100 transition"><i data-lucide="chevron-right" class="w-5 h-5"></i></button></div></div>
+                    <div class="bg-slate-50 p-4 rounded-lg mb-6 border border-slate-200">
+                        <div class="flex justify-between items-center"><h3 class="font-semibold text-slate-800">Filter by Duration</h3><div class="text-sm font-medium text-slate-700"><span id="min-duration-label">6h 0m</span> - <span id="max-duration-label">12h 0m</span></div></div>
+                        <div class="slider-container"><div class="slider-track"></div><div id="slider-progress" class="slider-progress"></div><input type="range" id="min-duration-slider" min="360" max="720" value="360" step="15"><input type="range" id="max-duration-slider" min="360" max="720" value="720" step="15"></div>
+                    </div>
+
+                    <div id="flight-list" class="space-y-4">
+                        <!-- Flight Option 1 -->
+                        <div class="flight-option bg-white border border-slate-200 rounded-lg overflow-hidden transition-all duration-300" data-duration="420">
+                            <div class="p-4 flex flex-col md:flex-row gap-4 justify-between">
+                                <div class="flex-grow">
+                                    <div class="flex items-center gap-4">
+                                        <img src="https://placehold.co/40x40/3b82f6/ffffff?text=SA" alt="SwiftWing Airlines" class="rounded-full"/>
+                                        <div>
+                                            <p class="font-semibold text-slate-800">New York <span class="text-slate-500">(JFK)</span> &rarr; London <span class="text-slate-500">(LHR)</span></p>
+                                            <p class="text-sm text-slate-500">SwiftWing Airlines &bull; Airbus A350</p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 flex items-center justify-between text-sm text-slate-600">
+                                        <div><span class="font-bold text-lg text-slate-900">08:30</span><p>Depart</p></div>
+                                        <div class="text-center"><i data-lucide="clock" class="w-4 h-4 inline-block -mt-1"></i> 7h 00m<p class="text-xs text-green-600 font-semibold">Non-stop</p></div>
+                                        <div><span class="font-bold text-lg text-slate-900">20:30</span><p>Arrive</p></div>
+                                    </div>
+                                </div>
+                                <div class="flex md:flex-col gap-2 flex-shrink-0">
+                                    <div class="fare-option text-center p-3 border rounded-lg cursor-pointer flex-1" onclick="showFareDetails(this, 485, 'economy')">
+                                        <p class="font-bold">$485</p><p class="text-xs text-slate-500">Economy</p>
+                                        <span class="text-xs font-semibold bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full mt-1 inline-block">Cheapest</span>
+                                    </div>
+                                    <div class="fare-option text-center p-3 border rounded-lg cursor-pointer flex-1" onclick="showFareDetails(this, 950, 'business')">
+                                        <p class="font-bold">$950</p><p class="text-xs text-slate-500">Business</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Flight Option 2 -->
+                        <div class="flight-option bg-white border border-slate-200 rounded-lg overflow-hidden transition-all duration-300" data-duration="435">
+                           <div class="p-4 flex flex-col md:flex-row gap-4 justify-between">
+                                <div class="flex-grow">
+                                    <div class="flex items-center gap-4">
+                                        <img src="https://placehold.co/40x40/16a34a/ffffff?text=AA" alt="Aero Airways" class="rounded-full"/>
+                                        <div>
+                                            <p class="font-semibold text-slate-800">New York <span class="text-slate-500">(JFK)</span> &rarr; London <span class="text-slate-500">(LHR)</span></p>
+                                            <p class="text-sm text-slate-500">Aero Airways &bull; Boeing 777</p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 flex items-center justify-between text-sm text-slate-600">
+                                        <div><span class="font-bold text-lg text-slate-900">10:00</span><p>Depart</p></div>
+                                        <div class="text-center"><i data-lucide="clock" class="w-4 h-4 inline-block -mt-1"></i> 7h 15m<p class="text-xs text-green-600 font-semibold">Non-stop</p></div>
+                                        <div><span class="font-bold text-lg text-slate-900">22:15</span><p>Arrive</p></div>
+                                    </div>
+                                </div>
+                                <div class="flex md:flex-col gap-2 flex-shrink-0">
+                                    <div class="fare-option text-center p-3 border rounded-lg cursor-pointer flex-1" onclick="showFareDetails(this, 510, 'economy')">
+                                        <p class="font-bold">$510</p><p class="text-xs text-slate-500">Economy</p>
+                                    </div>
+                                    <div class="fare-option text-center p-3 border rounded-lg cursor-pointer flex-1" onclick="showFareDetails(this, 1100, 'business')">
+                                        <p class="font-bold">$1100</p><p class="text-xs text-slate-500">Business</p>
+                                        <span class="text-xs font-semibold bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full mt-1 inline-block">2 seats left</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="no-flights-message" class="text-center text-slate-500 mt-8 hidden">No flights match your selected duration.</p>
+                    
+                    <!-- Economy Fare Tiers -->
+                    <div id="economy-fare-details" class="hidden mt-6 bg-slate-50 p-6 rounded-lg border border-slate-200">
+                        <h3 class="font-bold text-xl mb-4">Select Economy Fare</h3>
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <!-- Basic Fare -->
+                            <div class="border rounded-lg p-4 bg-white shadow-sm">
+                                <h4 class="font-bold text-lg">Basic</h4>
+                                <ul class="text-sm space-y-2 mt-3 text-slate-600">
+                                    <li class="flex items-center gap-2"><i data-lucide="armchair" class="w-4 h-4 text-green-600"></i>Randomly assigned seat</li>
+                                    <li class="flex items-center gap-2"><i data-lucide="briefcase" class="w-4 h-4 text-green-600"></i>1 Cabin baggage (10kg)</li>
+                                    <li class="flex items-center gap-2 text-slate-400"><i data-lucide="x-circle" class="w-4 h-4"></i>No check-in baggage</li>
+                                </ul>
+                                <div class="mt-4 text-center">
+                                    <p class="font-bold text-lg">+ $0</p>
+                                    <button onclick="confirmFareSelection(0)" class="mt-2 w-full bg-slate-200 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-300 transition">Select</button>
+                                </div>
+                            </div>
+                            <!-- Value Fare -->
+                            <div class="border-2 border-blue-500 rounded-lg p-4 bg-white shadow-lg relative">
+                                <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">RECOMMENDED</div>
+                                <h4 class="font-bold text-lg">Value</h4>
+                                <ul class="text-sm space-y-2 mt-3 text-slate-600">
+                                    <li class="flex items-center gap-2"><i data-lucide="armchair" class="w-4 h-4 text-green-600"></i>Standard seat of your choice</li>
+                                    <li class="flex items-center gap-2"><i data-lucide="briefcase" class="w-4 h-4 text-green-600"></i>1 Cabin baggage (10kg)</li>
+                                    <li class="flex items-center gap-2"><i data-lucide="luggage" class="w-4 h-4 text-green-600"></i>1 Check-in baggage (20kg)</li>
+                                </ul>
+                                <div class="mt-4 text-center">
+                                    <p class="font-bold text-lg">+ $25</p>
+                                    <button onclick="confirmFareSelection(25)" class="mt-2 w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">Select</button>
+                                </div>
+                            </div>
+                            <!-- Flex Fare -->
+                            <div class="border rounded-lg p-4 bg-white shadow-sm">
+                                <h4 class="font-bold text-lg">Flex</h4>
+                                <ul class="text-sm space-y-2 mt-3 text-slate-600">
+                                    <li class="flex items-center gap-2"><i data-lucide="armchair" class="w-4 h-4 text-green-600"></i>Standard seat of your choice</li>
+                                    <li class="flex items-center gap-2"><i data-lucide="briefcase" class="w-4 h-4 text-green-600"></i>1 Cabin baggage (10kg)</li>
+                                    <li class="flex items-center gap-2"><i data-lucide="luggage" class="w-4 h-4 text-green-600"></i>1 Check-in baggage (20kg)</li>
+                                    <li class="flex items-center gap-2"><i data-lucide="refresh-cw" class="w-4 h-4 text-green-600"></i>Change your flight once</li>
+                                </ul>
+                                <div class="mt-4 text-center">
+                                    <p class="font-bold text-lg">+ $75</p>
+                                    <button onclick="confirmFareSelection(75)" class="mt-2 w-full bg-slate-200 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-300 transition">Select</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Business Fare Card -->
+                     <div id="business-fare-details" class="hidden mt-6 bg-amber-500/10 p-1 rounded-2xl border-2 border-amber-400">
+                        <div class="bg-white rounded-xl flex flex-col md:flex-row items-center gap-6 p-6">
+                            <div class="flex-shrink-0">
+                                <img src="https://placehold.co/200x200/f59e0b/ffffff?text=SwiftWing\nBusiness" class="rounded-lg shadow-lg">
+                            </div>
+                            <div class="flex-grow">
+                                <h3 class="font-bold text-2xl text-slate-900">SwiftWing Business</h3>
+                                <div class="grid grid-cols-2 gap-x-6 gap-y-3 mt-4 text-slate-600 text-sm">
+                                    <div class="flex items-center gap-2"><i data-lucide="armchair" class="w-4 h-4 text-amber-600"></i>Wide premium leather seats</div>
+                                    <div class="flex items-center gap-2"><i data-lucide="zap" class="w-4 h-4 text-amber-600"></i>In-seat power outlet</div>
+                                    <div class="flex items-center gap-2"><i data-lucide="briefcase" class="w-4 h-4 text-amber-600"></i>15kg Cabin baggage</div>
+                                    <div class="flex items-center gap-2"><i data-lucide="wifi" class="w-4 h-4 text-amber-600"></i>30MB Wi-Fi</div>
+                                    <div class="flex items-center gap-2"><i data-lucide="luggage" class="w-4 h-4 text-amber-600"></i>30kg Check-in baggage</div>
+                                    <div class="flex items-center gap-2"><i data-lucide="utensils-crossed" class="w-4 h-4 text-amber-600"></i>Premium meal included</div>
+                                    <div class="flex items-center gap-2"><i data-lucide="rocket" class="w-4 h-4 text-amber-600"></i>Priority check-in & boarding</div>
+                                </div>
+                            </div>
+                            <div class="flex-shrink-0 text-center md:text-right">
+                                <p id="business-fare-price" class="font-bold text-3xl text-slate-900">$950</p>
+                                <button onclick="confirmBusinessSelection()" class="mt-3 w-full bg-amber-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-amber-600 transition shadow">Go with Business</button>
+                            </div>
+                        </div>
+                     </div>
+
+                </div>
+            </div>
+
+            <!-- Page 3: Passenger Details -->
+            <div id="passenger-page" class="page hidden">
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-6">Passenger Details</h2>
+                    <div id="passenger-forms-container" class="space-y-6">
+                        <!-- Passenger forms will be injected here -->
+                    </div>
+                    <div class="mt-8 flex justify-end">
+                        <button onclick="navigateTo('addons-page')" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105">Continue to Add-ons</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page 4: Add-ons -->
+            <div id="addons-page" class="page hidden"><div class="bg-white p-8 rounded-xl shadow-lg"><h2 class="text-2xl font-bold mb-6">Customize Your Trip</h2><div class="space-y-8"><div><h3 class="font-semibold text-lg text-slate-800 mb-3">Seat Selection</h3><div class="flex items-center gap-4"><button onclick="openSeatModal()" class="border border-blue-500 text-blue-500 font-semibold py-2 px-4 rounded-lg hover:bg-blue-50 transition flex items-center gap-2"><i data-lucide="armchair"></i><span id="seat-selection-text">Choose your seat</span></button><p class="font-semibold text-slate-700" id="seat-price-text"></p></div></div><div><h3 class="font-semibold text-lg text-slate-800 mb-3">Baggage Allowance</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="baggage-options"><div class="addon-option border rounded-lg p-4 text-center cursor-pointer hover:border-blue-500" data-name="Carry-on" data-price="0"><p class="font-bold">Carry-on</p><p class="text-sm text-slate-500">Included</p></div><div class="addon-option border rounded-lg p-4 text-center cursor-pointer hover:border-blue-500" data-name="20kg Bag" data-price="50"><p class="font-bold">+20kg Checked Bag</p><p class="text-sm text-slate-500 font-semibold">$50</p></div><div class="addon-option border rounded-lg p-4 text-center cursor-pointer hover:border-blue-500" data-name="30kg Bag" data-price="75"><p class="font-bold">+30kg Checked Bag</p><p class="text-sm text-slate-500 font-semibold">$75</p></div></div></div><div><h3 class="font-semibold text-lg text-slate-800 mb-3">In-Flight Meal</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="meal-options"><div class="addon-option border rounded-lg p-4 text-center cursor-pointer hover:border-blue-500" data-name="No Meal" data-price="0"><p class="font-bold">No Meal</p><p class="text-sm text-slate-500">No thanks</p></div><div class="addon-option border rounded-lg p-4 text-center cursor-pointer hover:border-blue-500" data-name="Chicken Teriyaki" data-price="18"><p class="font-bold">Chicken Teriyaki</p><p class="text-sm text-slate-500 font-semibold">$18</p></div><div class="addon-option border rounded-lg p-4 text-center cursor-pointer hover:border-blue-500" data-name="Vegetarian Pasta" data-price="15"><p class="font-bold">Vegetarian Pasta</p><p class="text-sm text-slate-500 font-semibold">$15</p></div></div></div><div><h3 class="font-semibold text-lg text-slate-800 mb-3">Onboard Wi-Fi</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="wifi-options"><div class="addon-option border rounded-lg p-4 text-center cursor-pointer hover:border-blue-500" data-name="No WiFi" data-price="0"><p class="font-bold">No Wi-Fi</p><p class="text-sm text-slate-500">Stay offline</p></div><div class="addon-option border rounded-lg p-4 text-center cursor-pointer hover:border-blue-500" data-name="Messaging Pass" data-price="5"><p class="font-bold">Messaging Pass</p><p class="text-sm text-slate-500 font-semibold">$5</p></div><div class="addon-option border rounded-lg p-4 text-center cursor-pointer hover:border-blue-500" data-name="Full Flight Surf" data-price="12"><p class="font-bold">Full Flight Surf</p><p class="text-sm text-slate-500 font-semibold">$12</p></div></div></div></div><div class="mt-8 flex justify-between items-center border-t pt-6"><div><p class="text-sm text-slate-600">Total Price</p><p id="total-price" class="text-2xl font-bold">$485</p></div><button onclick="navigateTo('review-page')" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105">Continue to Review</button></div></div></div>
+            
+            <!-- Page 5: Review -->
+            <div id="review-page" class="page hidden">
+                <div class="bg-white p-8 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-6">Review Your Booking</h2>
+                    <div class="space-y-6">
+                        <div class="border-b pb-4"><h3 class="font-semibold text-lg mb-2">Flight</h3><div class="flex justify-between items-center"><div><p class="font-medium">New York (JFK) to London (LHR)</p><p class="text-sm text-slate-500">SwiftWing Airlines, 08:30 - 20:30</p></div><p id="review-flight-price" class="font-bold text-lg">$485</p></div></div>
+                        <div class="border-b pb-4"><h3 class="font-semibold text-lg mb-2">Passengers</h3><div id="review-passenger-list" class="space-y-1"></div></div>
+                        <div class="border-b pb-4"><h3 class="font-semibold text-lg mb-2">Add-ons</h3><div id="review-addons"></div></div>
+                        <div class="flex justify-between items-center pt-4"><h3 class="font-bold text-xl">Total</h3><p id="review-total-price" class="font-bold text-2xl text-blue-600">$535</p></div>
+                    </div>
+                    <div class="mt-8 flex justify-end"><button onclick="navigateTo('payment-page')" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-transform transform hover:scale-105">Proceed to Payment</button></div>
+                </div>
+            </div>
+
+            <!-- Page 6: Payment -->
+            <div id="payment-page" class="page hidden"><div class="bg-white p-8 rounded-xl shadow-lg"><h2 class="text-2xl font-bold mb-2">Secure Payment</h2><p class="text-slate-600 mb-6">Total amount: <span id="payment-total-price" class="font-bold text-blue-600">$535</span></p><div class="space-y-4"><input type="text" placeholder="Name on Card" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"><input type="text" placeholder="Card Number" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"><div class="grid grid-cols-2 gap-4"><input type="text" placeholder="MM / YY" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"><input type="text" placeholder="CVV" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"></div></div><div class="mt-8"><button id="payment-button" onclick="showConfirmation()" class="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-transform transform hover:scale-105 flex items-center justify-center gap-2"><i data-lucide="lock"></i>Confirm and Pay $535</button></div></div></div>
+
+             <!-- Page 7: Confirmation -->
+            <div id="confirmation-page" class="page hidden">
+                <div class="bg-white p-8 rounded-xl shadow-lg text-center">
+                    <div class="w-16 h-16 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-4"><i data-lucide="check" class="w-10 h-10 text-green-600"></i></div>
+                    <h2 class="text-2xl font-bold mb-2">Booking Confirmed!</h2>
+                    <p class="text-slate-600 mb-6">Your e-ticket has been sent to your email address.</p>
+                    <button onclick="navigateTo('search-page', true)" class="mt-6 bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition">Book Another Flight</button>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="text-center text-slate-500 text-sm mt-16 pb-8 animated-item">
+            <div class="flex justify-center gap-6 mb-4">
+                <a href="#" class="hover:text-blue-500 transition-colors">About Us</a>
+                <a href="#" class="hover:text-blue-500 transition-colors">Contact</a>
+                <a href="#" class="hover:text-blue-500 transition-colors">FAQ</a>
+                <a href="#" class="hover:text-blue-500 transition-colors">Privacy Policy</a>
+            </div>
+            <div class="flex justify-center gap-6 mb-4">
+                <a href="#" class="hover:text-blue-500 transition-colors"><i data-lucide="facebook" class="w-5 h-5"></i></a>
+                <a href="#" class="hover:text-blue-500 transition-colors"><i data-lucide="twitter" class="w-5 h-5"></i></a>
+                <a href="#" class="hover:text-blue-500 transition-colors"><i data-lucide="instagram" class="w-5 h-5"></i></a>
+            </div>
+            <p>&copy; 2025 SwiftWing. All Rights Reserved.</p>
+        </footer>
+    </div>
+
+    <!-- Seat Selection Modal -->
+    <div id="seat-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50"><div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-lg"><div class="flex justify-between items-center mb-6"><h3 class="text-xl font-bold">Choose Your Seat</h3><button onclick="closeSeatModal()" class="p-1 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button></div><div class="bg-slate-100 p-4 rounded-lg"><div class="flex justify-center text-sm font-semibold mb-4 text-slate-600">Front</div><div class="space-y-2" id="seat-map"></div><div class="flex justify-center text-sm font-semibold mt-4 text-slate-600">Back</div></div><div class="flex justify-center flex-wrap gap-4 mt-4 text-xs"><div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-blue-100 border border-blue-300"></div>Available</div><div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-yellow-100 border border-yellow-400"></div>Premium (+$25)</div><div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-gray-200 border border-gray-300"></div>Occupied</div></div><div class="mt-6 flex justify-end"><button onclick="confirmSeatSelection()" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700">Confirm</button></div></div></div>
+    
+    <!-- Custom Calendar Modal -->
+    <div id="calendar-modal" class="hidden absolute z-50 bg-white rounded-xl shadow-2xl p-4 w-72">
+        <div class="flex justify-between items-center mb-4">
+            <button id="calendar-prev-month" class="p-1 rounded-full hover:bg-slate-100"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+            <div id="calendar-month-year" class="font-bold"></div>
+            <button id="calendar-next-month" class="p-1 rounded-full hover:bg-slate-100"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+        </div>
+        <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center text-sm"></div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-[100]">
+        <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <script>
+        const pages = document.querySelectorAll('.page');
+        const progressSteps = document.querySelectorAll('.progress-step');
+        const progressBar = document.getElementById('progress-bar');
+        const stepMapping = { 'search-page': 'step-search', 'select-page': 'step-select', 'passenger-page': 'step-passenger', 'addons-page': 'step-addons', 'review-page': 'step-review', 'payment-page': 'step-payment' };
+        let flightPrice = 485; // Default price
+        let selectedBasePrice = 485;
+        let selectedAddons = { baggage: { name: 'Carry-on', price: 0 }, seat: { name: null, price: 0 }, meal: { name: 'No Meal', price: 0 }, wifi: { name: 'No WiFi', price: 0 } };
+        let tempSelectedSeat = null;
+        
+        function swapLocations() {
+            const fromInput = document.getElementById('from');
+            const toInput = document.getElementById('to');
+            const fromValue = fromInput.value;
+            fromInput.value = toInput.value;
+            toInput.value = fromValue;
+        }
+
+        function updatePassengerCount(change) {
+            const passengerInput = document.getElementById('passengers');
+            const display = document.getElementById('passenger-count-display');
+            let currentCount = parseInt(passengerInput.value);
+            let newCount = currentCount + change;
+            if (newCount < 1) newCount = 1;
+            passengerInput.value = newCount;
+            display.textContent = `${newCount} Adult${newCount > 1 ? 's' : ''}`;
+        }
+
+        const calendarModal = document.getElementById('calendar-modal');
+        let currentCalendarInput = null;
+        let calendarDate = new Date();
+
+        function renderCalendar() {
+            calendarDate.setDate(1);
+            const month = calendarDate.getMonth();
+            const year = calendarDate.getFullYear();
+            
+            document.getElementById('calendar-month-year').textContent = `${calendarDate.toLocaleString('default', { month: 'long' })} ${year}`;
+            
+            const calendarGrid = document.getElementById('calendar-grid');
+            calendarGrid.innerHTML = '';
+
+            const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            daysOfWeek.forEach(day => {
+                const dayEl = document.createElement('div');
+                dayEl.textContent = day;
+                dayEl.className = 'font-semibold text-slate-500';
+                calendarGrid.appendChild(dayEl);
+            });
+
+            const firstDayIndex = calendarDate.getDay();
+            const lastDay = new Date(year, month + 1, 0).getDate();
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyEl = document.createElement('div');
+                calendarGrid.appendChild(emptyEl);
+            }
+
+            for (let day = 1; day <= lastDay; day++) {
+                const dayEl = document.createElement('div');
+                dayEl.textContent = day;
+                dayEl.className = 'calendar-day p-1.5 rounded-full cursor-pointer';
+                
+                const today = new Date();
+                if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                     dayEl.classList.add('bg-slate-200');
+                }
+
+                dayEl.addEventListener('click', () => {
+                    const selectedDate = new Date(year, month, day);
+                    const formattedDate = `${String(day).padStart(2, '0')} / ${String(month + 1).padStart(2, '0')} / ${year}`;
+                    currentCalendarInput.value = formattedDate;
+                    closeCalendar();
+                });
+                calendarGrid.appendChild(dayEl);
+            }
+        }
+
+        function openCalendar(event, inputId) {
+            currentCalendarInput = document.getElementById(inputId);
+            const inputRect = currentCalendarInput.closest('div').getBoundingClientRect();
+            
+            const dateParts = currentCalendarInput.value.split(' / ');
+            if (dateParts.length === 3) {
+                const day = parseInt(dateParts[0], 10);
+                const month = parseInt(dateParts[1], 10) - 1;
+                const year = parseInt(dateParts[2], 10);
+                calendarDate = new Date(year, month, day);
+            } else {
+                calendarDate = new Date();
+            }
+
+            renderCalendar();
+            calendarModal.classList.remove('hidden');
+            calendarModal.style.top = `${inputRect.bottom + window.scrollY + 8}px`;
+            calendarModal.style.left = `${inputRect.left + window.scrollX}px`;
+            
+            setTimeout(() => { document.addEventListener('click', closeCalendarOnClickOutside, { once: true }); }, 100);
+        }
+
+        function closeCalendar() {
+            calendarModal.classList.add('hidden');
+            currentCalendarInput = null;
+        }
+
+        function closeCalendarOnClickOutside(event) {
+            if (!calendarModal.contains(event.target) && !event.target.closest('[onclick^="openCalendar"]')) {
+                closeCalendar();
+            } else {
+                 document.addEventListener('click', closeCalendarOnClickOutside, { once: true });
+            }
+        }
+
+        document.getElementById('calendar-prev-month').addEventListener('click', () => {
+            calendarDate.setMonth(calendarDate.getMonth() - 1);
+            renderCalendar();
+        });
+
+        document.getElementById('calendar-next-month').addEventListener('click', () => {
+            calendarDate.setMonth(calendarDate.getMonth() + 1);
+            renderCalendar();
+        });
+        
+        function showFareDetails(element, basePrice, fareType) {
+            selectedBasePrice = basePrice;
+            const economyContainer = document.getElementById('economy-fare-details');
+            const businessContainer = document.getElementById('business-fare-details');
+            
+            // Highlight selected flight
+            document.querySelectorAll('.flight-option').forEach(el => el.classList.remove('selected'));
+            const flightOption = element.closest('.flight-option');
+            flightOption.classList.add('selected');
+
+            // Show the correct details container
+            if (fareType === 'economy') {
+                businessContainer.classList.add('hidden');
+                economyContainer.classList.remove('hidden');
+                economyContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                lucide.createIcons({nodes: [economyContainer]});
+            } else if (fareType === 'business') {
+                economyContainer.classList.add('hidden');
+                document.getElementById('business-fare-price').textContent = `$${basePrice}`;
+                businessContainer.classList.remove('hidden');
+                businessContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                lucide.createIcons({nodes: [businessContainer]});
+            }
+        }
+
+        function confirmFareSelection(additionalPrice) {
+            flightPrice = selectedBasePrice + additionalPrice;
+            navigateTo('passenger-page');
+        }
+
+        function confirmBusinessSelection() {
+            flightPrice = selectedBasePrice;
+            navigateTo('passenger-page');
+        }
+        
+        function updateTotal() {
+            const totalPrice = flightPrice + (selectedAddons.baggage.price) + (selectedAddons.seat.price) + (selectedAddons.meal.price) + (selectedAddons.wifi.price);
+            
+            const addonsTotalPriceEl = document.getElementById('total-price');
+            if (addonsTotalPriceEl) addonsTotalPriceEl.textContent = `$${totalPrice}`;
+
+            const passengerCount = parseInt(document.getElementById('passengers').value);
+            const passengerList = document.getElementById('review-passenger-list');
+            passengerList.innerHTML = '';
+            for (let i = 1; i <= passengerCount; i++) {
+                const firstName = document.getElementById(`first-name-${i}`)?.value || `Passenger ${i}`;
+                const lastName = document.getElementById(`last-name-${i}`)?.value || '';
+                const p = document.createElement('p');
+                p.textContent = `${firstName} ${lastName}`;
+                passengerList.appendChild(p);
+            }
+
+            document.getElementById('review-flight-price').textContent = `$${flightPrice}`;
+            document.getElementById('review-total-price').textContent = `$${totalPrice}`;
+            document.getElementById('payment-total-price').textContent = `$${totalPrice}`;
+            const paymentButton = document.getElementById('payment-button');
+            paymentButton.innerHTML = `<i data-lucide="lock"></i>Confirm and Pay $${totalPrice}`;
+            lucide.createIcons({ nodes: [paymentButton] });
+            updateReviewAddons();
+        }
+        function updateReviewAddons() {
+            const container = document.getElementById('review-addons'); if(!container) return; container.innerHTML = '';
+            Object.values(selectedAddons).forEach(addon => {
+                if (addon.price > 0 && addon.name) {
+                    const el = document.createElement('div'); el.className = 'flex justify-between items-center text-sm';
+                    el.innerHTML = `<p>${addon.name}</p><p class="font-semibold">$${addon.price}</p>`; container.appendChild(el);
+                }
+            });
+            if(container.innerHTML === '') container.innerHTML = '<p class="text-sm text-slate-500">No add-ons selected.</p>';
+        }
+        function setupAddonSelection(containerId, category) {
+            const container = document.getElementById(containerId);
+            container.addEventListener('click', (e) => {
+                const option = e.target.closest('.addon-option'); if (!option) return;
+                selectedAddons[category] = { name: option.dataset.name, price: parseInt(option.dataset.price, 10) };
+                container.querySelectorAll('.addon-option').forEach(el => el.classList.remove('selected'));
+                option.classList.add('selected'); updateTotal();
+            });
+        }
+        function openSeatModal() { document.getElementById('seat-modal').classList.remove('hidden'); generateSeatMap(); }
+        function closeSeatModal() { document.getElementById('seat-modal').classList.add('hidden'); tempSelectedSeat = null; }
+        function generateSeatMap() {
+            const seatMap = document.getElementById('seat-map'); seatMap.innerHTML = '';
+            const rows = 10, seatsPerRow = ['A', 'B', 'C', null, 'D', 'E', 'F'], occupiedSeats = ['2A', '5D', '8C', '3F'];
+            for (let i = 1; i <= rows; i++) {
+                const rowEl = document.createElement('div'); rowEl.className = 'flex justify-center gap-2';
+                seatsPerRow.forEach(seatLetter => {
+                    if (seatLetter === null) { const aisle = document.createElement('div'); aisle.className = 'w-8 text-center text-slate-400 font-bold'; aisle.textContent = i; rowEl.appendChild(aisle); return; }
+                    const seatId = `${i}${seatLetter}`, seat = document.createElement('div');
+                    seat.className = 'seat'; seat.textContent = seatLetter; seat.dataset.seatId = seatId;
+                    seat.dataset.price = (i <= 3) ? 25 : 10;
+                    if (i <= 3) seat.classList.add('premium');
+                    if (occupiedSeats.includes(seatId)) seat.classList.add('occupied');
+                    else seat.addEventListener('click', handleSeatClick);
+                    rowEl.appendChild(seat);
+                });
+                seatMap.appendChild(rowEl);
+            }
+        }
+        function handleSeatClick(e) {
+            const seat = e.target; if (seat.classList.contains('occupied')) return;
+            const currentSelected = document.querySelector('.seat.selected'); if (currentSelected) currentSelected.classList.remove('selected');
+            seat.classList.add('selected'); tempSelectedSeat = { id: seat.dataset.seatId, price: parseInt(seat.dataset.price, 10) };
+        }
+        function confirmSeatSelection() {
+            if (tempSelectedSeat) {
+                selectedAddons.seat = { name: `Seat ${tempSelectedSeat.id}`, price: tempSelectedSeat.price };
+                document.getElementById('seat-selection-text').textContent = `Seat ${tempSelectedSeat.id}`;
+                document.getElementById('seat-price-text').textContent = `+$${tempSelectedSeat.price}`;
+            }
+            updateTotal(); closeSeatModal();
+        }
+        
+        function generatePassengerForms() {
+            const passengerCount = parseInt(document.getElementById('passengers').value, 10);
+            const container = document.getElementById('passenger-forms-container');
+            container.innerHTML = '';
+            for (let i = 1; i <= passengerCount; i++) {
+                const formHTML = `
+                    <div class="space-y-4 pt-4 border-t first:border-t-0 first:pt-0">
+                        <h3 class="font-semibold text-lg text-slate-800">Passenger ${i} (Adult)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <input id="first-name-${i}" type="text" placeholder="First Name" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <input id="last-name-${i}" type="text" placeholder="Last Name" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += formHTML;
+            }
+            // Add contact info section only once after all passenger forms
+            const contactHTML = `
+                <div class="space-y-4 pt-4 border-t">
+                    <h3 class="font-semibold text-lg text-slate-800">Contact Information</h3>
+                    <p class="text-sm text-slate-500">We'll send booking confirmation and flight updates here.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <input type="email" placeholder="Email Address" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                         <input type="tel" placeholder="Phone Number" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+            `;
+            container.innerHTML += contactHTML;
+        }
+
+        function navigateTo(pageId, reset = false) {
+            closeCalendar(); pages.forEach(page => page.classList.add('hidden'));
+            const targetPage = document.getElementById(pageId); if (targetPage) targetPage.classList.remove('hidden');
+            
+            const isSearchPage = pageId === 'search-page';
+            document.getElementById('main-header').classList.toggle('hidden', isSearchPage);
+            document.getElementById('progress-bar').classList.toggle('hidden', !isSearchPage);
+
+
+            if (pageId === 'passenger-page') {
+                generatePassengerForms();
+            }
+
+            if (pageId === 'select-page') {
+                const passengerCount = document.getElementById('passengers').value;
+                document.getElementById('flight-select-subtitle').textContent = `New York (JFK) to London (LHR) - ${passengerCount} Passenger${passengerCount > 1 ? 's' : ''}`;
+            }
+
+            window.scrollTo(0, 0);
+            if (pageId === 'addons-page' || pageId === 'review-page' || pageId === 'payment-page') updateTotal(); 
+            if (reset) {
+                progressSteps.forEach(step => step.classList.remove('active', 'completed'));
+                document.getElementById('step-search').classList.add('active');
+            } else { updateProgress(pageId); }
+        }
+        function searchFlights() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            loadingOverlay.classList.remove('hidden');
+            setTimeout(() => {
+                loadingOverlay.classList.add('hidden');
+                navigateTo('select-page');
+            }, 1500);
+        }
+        function updateProgress(currentPageId) {
+            let activeFound = false;
+            progressSteps.forEach(step => {
+                step.classList.remove('active', 'completed');
+                if (step.id === stepMapping[currentPageId]) { step.classList.add('active'); activeFound = true; } 
+                else if (!activeFound) { step.classList.add('completed'); }
+            });
+        }
+        function showConfirmation() {
+            pages.forEach(page => page.classList.add('hidden'));
+            document.getElementById('confirmation-page').classList.remove('hidden');
+            progressBar.classList.add('hidden');
+        }
+        function selectTripType(type) {
+            const returnDateContainer = document.getElementById('return-date-container');
+            if (type === 'one-way') {
+                document.getElementById('one-way-btn').classList.add('active');
+                document.getElementById('round-trip-btn').classList.remove('active');
+                returnDateContainer.style.display = 'none';
+            } else {
+                document.getElementById('round-trip-btn').classList.add('active');
+                document.getElementById('one-way-btn').classList.remove('active');
+                returnDateContainer.style.display = 'block';
+            }
+        }
+        const minSlider = document.getElementById('min-duration-slider'), maxSlider = document.getElementById('max-duration-slider');
+        const minLabel = document.getElementById('min-duration-label'), maxLabel = document.getElementById('max-duration-label');
+        const sliderProgress = document.getElementById('slider-progress'), flightList = document.getElementById('flight-list'), noFlightsMessage = document.getElementById('no-flights-message');
+        function formatDuration(minutes) { const h = Math.floor(minutes / 60), m = minutes % 60; return `${h}h ${m}m`; }
+        function updateSlider() {
+            let minVal = parseInt(minSlider.value), maxVal = parseInt(maxSlider.value);
+            if (minVal >= maxVal) {
+                if (this && this.id === 'min-duration-slider') minSlider.value = maxVal - 15; else maxSlider.value = minVal + 15;
+                minVal = parseInt(minSlider.value); maxVal = parseInt(maxSlider.value);
+            }
+            minLabel.textContent = formatDuration(minVal); maxLabel.textContent = formatDuration(maxVal);
+            const minPercent = ((minVal - minSlider.min) / (minSlider.max - minSlider.min)) * 100;
+            const maxPercent = ((maxVal - maxSlider.min) / (maxSlider.max - minSlider.min)) * 100;
+            sliderProgress.style.left = `${minPercent}%`; sliderProgress.style.width = `${maxPercent - minPercent}%`;
+            filterFlights(minVal, maxVal);
+        }
+        function filterFlights(minDuration, maxDuration) {
+            const flights = flightList.querySelectorAll('.flight-option');
+            let visibleCount = 0;
+            flights.forEach(flight => {
+                const duration = parseInt(flight.dataset.duration);
+                if (duration >= minDuration && duration <= maxDuration) { flight.classList.remove('hidden'); visibleCount++; } 
+                else { flight.classList.add('hidden'); }
+            });
+            noFlightsMessage.classList.toggle('hidden', visibleCount > 0);
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            
+            const animatedElements = document.querySelectorAll('.animated-item');
+            animatedElements.forEach((el, index) => {
+                setTimeout(() => {
+                    el.classList.add('is-visible');
+                }, 100 * (index + 1));
+            });
+            
+            navigateTo('search-page', true);
+            setupAddonSelection('baggage-options', 'baggage');
+            setupAddonSelection('meal-options', 'meal');
+            setupAddonSelection('wifi-options', 'wifi');
+            document.querySelector('#baggage-options .addon-option[data-price="0"]').classList.add('selected');
+            document.querySelector('#meal-options .addon-option[data-price="0"]').classList.add('selected');
+            document.querySelector('#wifi-options .addon-option[data-price="0"]').classList.add('selected');
+            minSlider.addEventListener('input', updateSlider);
+            maxSlider.addEventListener('input', updateSlider);
+            updateSlider();
+            updateTotal();
+
+            const seatModal = document.getElementById('seat-modal');
+            seatModal.addEventListener('click', (event) => {
+                if (event.target === seatModal) {
+                    closeSeatModal();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
